@@ -1,0 +1,23 @@
+{
+  "version": "genre-v1",
+  "level": "root",
+  "roots": ["electronic", "rock", "hip-hop", "pop", "jazz",
+            "classical", "folk", "soul-rnb", "blues", "country", "world"],
+  "fma_root_map": {
+    "Electronic": "electronic",
+    "Rock": "rock",
+    "Hip-Hop": "hip-hop",
+    "Pop": "pop",
+    "Jazz": "jazz",
+    "Classical": "classical",
+    "Folk": "folk",
+    "Soul-RnB": "soul-rnb",
+    "Blues": "blues",
+    "Country": "country",
+    "International": "world",
+    "Instrumental": "electronic",
+    "Easy Listening": "pop"
+  },
+  "dropped": ["Experimental", "Spoken", "Old-Time / Historic"],
+  "sub": {}
+}
