@@ -10,9 +10,9 @@ from .mel import log_mel, SR, CHUNK_SAMPLES
 def multihot(labels: list[str], roots: list[str]) -> torch.Tensor:
     idx = {r: i for i, r in enumerate(roots)}
     v = torch.zeros(len(roots))
-    for l in labels:
-        if l in idx:
-            v[idx[l]] = 1.0
+    for label in labels:
+        if label in idx:
+            v[idx[label]] = 1.0
     return v
 
 def _load_mono_16k(path: str) -> torch.Tensor:
@@ -44,5 +44,6 @@ class GenreChunkDataset(Dataset):
         wav = _load_mono_16k(row["filepath"])
         chunk = _random_chunk(wav)
         mel = log_mel(chunk)
-        labels = str(row["root_labels"]).split("|") if row["root_labels"] else []
+        raw = row["root_labels"]
+        labels = [] if pd.isna(raw) else str(raw).split("|")
         return mel, multihot(labels, self.roots)

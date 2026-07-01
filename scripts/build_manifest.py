@@ -11,6 +11,8 @@ import pandas as pd
 from aurum_genre.licenses import filter_permissive, build_notice
 from aurum_genre.taxonomy import load_taxonomy, map_fma_root
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fma-meta", required=True)
@@ -29,7 +31,7 @@ def main() -> None:
     }).dropna(subset=["genre_top"])
 
     df = filter_permissive(df, "license")
-    tax = load_taxonomy("taxonomy.json")
+    tax = load_taxonomy(_REPO_ROOT / "taxonomy.json")
     df["root"] = df["genre_top"].apply(lambda g: map_fma_root(g, tax))
     df = df.dropna(subset=["root"])
 
