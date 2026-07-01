@@ -6,3 +6,6 @@ __pycache__/
 data/
 *.onnx
 release/
+
+# stub fixture output
+out/
