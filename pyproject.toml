@@ -21,3 +21,7 @@ build-backend = "setuptools.build_meta"
 packages = ["aurum_genre"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+  "error::UserWarning:aurum_genre",
+  "ignore:At least one mel filterbank has all zero values.*:UserWarning",
+]

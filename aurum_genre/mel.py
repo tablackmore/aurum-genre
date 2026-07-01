@@ -27,8 +27,8 @@ def log_mel(waveform: torch.Tensor) -> torch.Tensor:
 def mel_recipe() -> str:
     return (
         "AURUM genre mel recipe (Rust must match exactly):\n"
-        f"sample_rate=16000\nn_fft=512\nhop=256\nn_mels=128\n"
+        "sample_rate=16000\nn_fft=512\nhop=256\nn_mels=128\n"
         "power=2.0 center=True norm=None mel_scale=htk\n"
         "log=log10(clamp(mel, min=1e-7))\n"
-        f"chunk_samples=59049\n"
+        "chunk_samples=59049\n"
     )

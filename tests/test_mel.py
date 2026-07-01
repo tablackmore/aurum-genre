@@ -20,5 +20,16 @@ def test_log_mel_is_deterministic():
 
 def test_recipe_lists_all_params():
     r = mel_recipe()
-    for key in ["sample_rate=16000", "n_fft=512", "hop=256", "n_mels=128"]:
+    for key in [
+        "sample_rate=16000",
+        "n_fft=512",
+        "hop=256",
+        "n_mels=128",
+        "power=2.0",
+        "center=True",
+        "norm=None",
+        "mel_scale=htk",
+        "chunk_samples=59049",
+        "log=log10(clamp(mel, min=1e-7))",
+    ]:
         assert key in r
