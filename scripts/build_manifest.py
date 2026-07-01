@@ -1,9 +1,10 @@
 """FMA metadata → filtered permissive manifest CSV (filepath, root_labels).
 
 Usage: python scripts/build_manifest.py --fma-meta data/fma_metadata \
-         --fma-audio data/fma_medium --out data/manifest.csv --notice release/NOTICE
+         --fma-audio data/fma_medium --out data/manifest.csv --notice release/NOTICE \
+         --license-manifest release/license_manifest.csv
 Reads fma tracks.csv (multi-index header), keeps permissive licenses, maps the
-track's top genre(s) to root labels, writes the manifest + NOTICE."""
+track's top genre(s) to root labels, writes the manifest + NOTICE + license_manifest."""
 from __future__ import annotations
 import argparse
 from pathlib import Path
@@ -13,15 +14,12 @@ from aurum_genre.taxonomy import load_taxonomy, map_fma_root
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--fma-meta", required=True)
-    ap.add_argument("--fma-audio", required=True)
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--notice", required=True)
-    a = ap.parse_args()
 
-    tracks = pd.read_csv(Path(a.fma_meta) / "tracks.csv", index_col=0, header=[0, 1])
+def build(fma_meta: str | Path, fma_audio: str | Path,
+          out: str | Path, notice: str | Path,
+          license_manifest: str | Path | None = None) -> None:
+    """Core manifest-build logic; importable for testing."""
+    tracks = pd.read_csv(Path(fma_meta) / "tracks.csv", index_col=0, header=[0, 1])
     df = pd.DataFrame({
         "track_id": tracks.index,
         "license": tracks[("track", "license")].values,
@@ -37,15 +35,34 @@ def main() -> None:
 
     def fp(tid: int) -> str:
         s = f"{int(tid):06d}"
-        return str(Path(a.fma_audio) / s[:3] / f"{s}.mp3")
+        return str(Path(fma_audio) / s[:3] / f"{s}.mp3")
     df["filepath"] = df["track_id"].apply(fp)
     df["root_labels"] = df["root"]
 
-    Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-    df[["filepath", "root_labels"]].to_csv(a.out, index=False)
-    Path(a.notice).parent.mkdir(parents=True, exist_ok=True)
-    Path(a.notice).write_text(build_notice(df))
-    print(f"wrote {a.out} ({len(df)} tracks) + {a.notice}")
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    df[["filepath", "root_labels"]].to_csv(out, index=False)
+    Path(notice).parent.mkdir(parents=True, exist_ok=True)
+    Path(notice).write_text(build_notice(df))
+    print(f"wrote {out} ({len(df)} tracks) + {notice}")
+
+    if license_manifest is not None:
+        Path(license_manifest).parent.mkdir(parents=True, exist_ok=True)
+        df[["track_id", "artist_name", "track_title", "license", "root"]].to_csv(
+            license_manifest, index=False
+        )
+        print(f"wrote {license_manifest} ({len(df)} rows)")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fma-meta", required=True)
+    ap.add_argument("--fma-audio", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--notice", required=True)
+    ap.add_argument("--license-manifest", default=None,
+                    help="Path to write per-track provenance CSV")
+    a = ap.parse_args()
+    build(a.fma_meta, a.fma_audio, a.out, a.notice, a.license_manifest)
 
 if __name__ == "__main__":
     main()

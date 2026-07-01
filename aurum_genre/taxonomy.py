@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 def load_taxonomy(path: str | Path = "taxonomy.json") -> dict:
-    return json.loads(Path(path).read_text())
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 def root_labels(tax: dict) -> list[str]:
     return list(tax["roots"])

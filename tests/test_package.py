@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from scripts.package_release import REQUIRED, verify_release
 

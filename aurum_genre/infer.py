@@ -2,6 +2,7 @@
 sigmoid probs, threshold. This defines the behaviour the Rust port must mirror."""
 from __future__ import annotations
 import json
+from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 from .mel import CHUNK_SAMPLES
@@ -21,10 +22,13 @@ def _chunks(wav: np.ndarray, hop: int = CHUNK_SAMPLES):
 
 
 def tag_track(onnx_path, thresholds_path, roots, wav_16k_mono, log_mel_fn):
-    thresholds = json.loads(open(thresholds_path).read())
+    thresholds = json.loads(Path(thresholds_path).read_text())
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+    wav = wav_16k_mono
+    if wav.ndim == 1:
+        wav = wav[None, :]
     probs = []
-    for ch in _chunks(wav_16k_mono):
+    for ch in _chunks(wav):
         mel = log_mel_fn(np.ascontiguousarray(ch))[None]   # [1,1,128,T]
         logits = sess.run(None, {"mel": mel.astype(np.float32)})[0][0]
         probs.append(1.0 / (1.0 + np.exp(-logits)))

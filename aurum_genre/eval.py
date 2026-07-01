@@ -12,7 +12,7 @@ def macro_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
         aucs.append(roc_auc_score(y_true[:, c], y_score[:, c]))
     return float(np.mean(aucs)) if aucs else 0.0
 
-def calibrate_thresholds(y_true, y_score, roots) -> dict:
+def calibrate_thresholds(y_true, y_score, roots) -> dict[str, float]:
     out = {}
     grid = np.linspace(0.05, 0.95, 19)
     for c, name in enumerate(roots):
