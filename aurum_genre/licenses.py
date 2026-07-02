@@ -11,8 +11,11 @@ _DISQUALIFY = ("noncommercial", "non-commercial", "noderiv", "no-deriv",
                "sharealike", "share-alike", "-nc", "-nd", "-sa")
 _PERMIT = ("cc by", "cc-by", "attribution", "cc0", "public domain", "publicdomain")
 
-def is_permissive(license_str: str | None) -> bool:
-    if not license_str:
+def is_permissive(license_str) -> bool:
+    # Reject anything that isn't a real string: None, NaN floats (real FMA rows
+    # have missing licenses as NaN — and `not float('nan')` is False, so a bare
+    # falsiness check would let them through to `.strip()`), and blanks.
+    if not isinstance(license_str, str) or not license_str.strip():
         return False
     s = license_str.strip().lower()
     if any(bad in s for bad in _DISQUALIFY):
