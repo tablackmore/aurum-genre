@@ -1,6 +1,6 @@
 {
-  "version": "genre-v1",
-  "level": "root",
+  "version": "genre-v2",
+  "level": "root+sub",
   "roots": ["electronic", "rock", "hip-hop", "pop", "jazz",
             "classical", "folk", "soul-rnb", "blues", "country", "world"],
   "fma_root_map": {
@@ -19,5 +19,24 @@
     "Easy Listening": "pop"
   },
   "dropped": ["Experimental", "Spoken", "Old-Time / Historic"],
-  "sub": {}
+  "sub": {
+    "electronic": ["ambient", "chiptune", "dance", "downtempo", "drum-n-bass",
+                   "dubstep", "house", "idm", "minimal", "techno", "trance", "trip-hop"]
+  },
+  "fma_sub_map": {
+    "Chip Music": "chiptune",
+    "Chiptune": "chiptune",
+    "IDM": "idm",
+    "Techno": "techno",
+    "Downtempo": "downtempo",
+    "Ambient Electronic": "ambient",
+    "Ambient": "ambient",
+    "House": "house",
+    "Trip-Hop": "trip-hop",
+    "Minimal Electronic": "minimal",
+    "Dubstep": "dubstep",
+    "Dance": "dance",
+    "Drum & Bass": "drum-n-bass",
+    "Trance": "trance"
+  }
 }

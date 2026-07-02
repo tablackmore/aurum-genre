@@ -96,6 +96,38 @@ def test_subset_and_split_filtering(tmp_path):
     assert len(train) == 2
 
 
+def test_electronic_track_gets_namespaced_subgenre_labels(tmp_path):
+    """An electronic track whose fine genres include Techno gets electronic:techno;
+    non-electronic tracks stay root-only; missing genres degrade gracefully."""
+    fma_meta = tmp_path / "fma_metadata"
+    fma_meta.mkdir()
+    # tracks.csv WITH a track.genres column (list of fine genre IDs)
+    content = textwrap.dedent("""\
+        ,track,track,track,track,artist,set,set
+        track_id,genre_top,genres,license,title,name,subset,split
+        1,Electronic,[181],Creative Commons Attribution,Song A,Artist A,small,training
+        2,Rock,[12],Creative Commons Attribution,Song B,Artist B,small,training
+        3,Electronic,[38],Creative Commons Attribution,Song C,Artist C,small,training
+    """)
+    (fma_meta / "tracks.csv").write_text(content)
+    # genres.csv: 181=Techno (Electronic subgenre), 38=Experimental (no sub), 12=Rock
+    (fma_meta / "genres.csv").write_text(
+        "genre_id,#tracks,parent,title,top_level\n"
+        "181,100,15,Techno,15\n38,100,0,Experimental,38\n12,100,0,Rock,12\n"
+    )
+    fma_audio = tmp_path / "fma_audio"
+    fma_audio.mkdir()
+    out = tmp_path / "m.csv"
+    notice = tmp_path / "NOTICE"
+
+    from scripts.build_manifest import build
+    build(fma_meta, fma_audio, out, notice, split="training")
+    labels = set(pd.read_csv(out)["root_labels"])
+    assert "electronic|electronic:techno" in labels   # track 1: root + subgenre
+    assert "rock" in labels                            # track 2: root only
+    assert "electronic" in labels                      # track 3: electronic, no known sub
+
+
 def test_license_manifest_not_written_when_arg_is_none(tmp_path):
     """When license_manifest=None, no file should be created."""
     fma_meta = tmp_path / "fma_metadata"

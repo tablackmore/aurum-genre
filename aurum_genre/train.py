@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from .dataset import GenreChunkDataset, class_pos_weights
 from .model import ShortChunkCNN
 from .seed import seed_everything, worker_init_fn
-from .taxonomy import load_taxonomy, root_labels
+from .taxonomy import load_taxonomy, output_labels
 
 # train.py lives at aurum_genre/train.py → parent.parent is the repo root
 _DEFAULT_TAXONOMY = Path(__file__).resolve().parent.parent / "taxonomy.json"
@@ -63,7 +63,8 @@ def fit(manifest: str, epochs: int, out_ckpt: str,
         seed: int = 1337, num_workers: int = 4) -> None:
     device = device or default_device()
     seed_everything(seed)
-    roots = root_labels(load_taxonomy(taxonomy_path or _DEFAULT_TAXONOMY))
+    # "roots" holds the full output vocabulary (roots + namespaced subgenres).
+    roots = output_labels(load_taxonomy(taxonomy_path or _DEFAULT_TAXONOMY))
     ds = GenreChunkDataset(manifest, roots, cache_dir=cache_dir,
                            chunks_per_track=chunks_per_track, augment=augment)
     loader = DataLoader(ds, batch_size=batch_size, shuffle=True,
