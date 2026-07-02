@@ -30,16 +30,19 @@ def evaluate(ckpt: str, manifest: str, out_thresholds: str) -> dict:
     from torch.utils.data import DataLoader
     from .dataset import GenreChunkDataset
     from .model import ShortChunkCNN
+    from .train import default_device
     blob = torch.load(ckpt, map_location="cpu", weights_only=True)  # safe unpickle
     roots = blob["roots"]
+    device = default_device()
     model = ShortChunkCNN(num_classes=len(roots))
-    model.load_state_dict(blob["state_dict"]); model.eval()
+    model.load_state_dict(blob["state_dict"]); model.eval(); model.to(device)
     ds = GenreChunkDataset(manifest, roots)
     loader = DataLoader(ds, batch_size=32)
     ys, ss = [], []
     with torch.no_grad():
         for mel, target in loader:
-            ss.append(torch.sigmoid(model(mel)).numpy()); ys.append(target.numpy())
+            probs = torch.sigmoid(model(mel.to(device))).cpu()
+            ss.append(probs.numpy()); ys.append(target.numpy())
     y_true, y_score = np.concatenate(ys), np.concatenate(ss)
     thresholds = calibrate_thresholds(y_true, y_score, roots)
     with open(out_thresholds, "w") as f:

@@ -35,8 +35,10 @@ mkdir -p "$DEST"
 dl_verify_unzip() {
   local url="$1" zip="$2" sha1="$3" outdir="$4"
   if [ -d "$outdir" ]; then echo "✓ $outdir already present — skipping"; return; fi
-  if [ ! -f "$zip" ]; then
-    echo "↓ downloading $(basename "$zip") ..."
+  # Resume (curl -C -) whenever the zip is missing OR present-but-incomplete.
+  # Skipping straight to SHA1 on a partial download would spuriously "mismatch".
+  if [ ! -f "$zip" ] || ! shasum -a 1 "$zip" | grep -q "$sha1"; then
+    echo "↓ downloading/resuming $(basename "$zip") ..."
     curl -fSL -C - "$url" -o "$zip"
   fi
   echo "· verifying SHA1 of $(basename "$zip") ..."

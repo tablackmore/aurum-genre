@@ -52,7 +52,9 @@ def main() -> None:
                    None, subset=a.subset, split="validation")
 
     print(f"[2/5] training ({a.epochs} epochs) ...")
-    train.fit(str(train_csv), a.epochs, str(ckpt))
+    # Pass the val split so training keeps the best-on-validation checkpoint and
+    # can early-stop (see aurum_genre.train.fit). Cache dir from AURUM_CACHE_DIR.
+    train.fit(str(train_csv), a.epochs, str(ckpt), val_manifest=str(val_csv))
 
     print("[3/5] evaluating on the validation split ...")
     metrics = geval.evaluate(str(ckpt), str(val_csv), str(rel / "thresholds.json"))
