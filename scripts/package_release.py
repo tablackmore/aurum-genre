@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 REQUIRED = ["genre.onnx", "taxonomy.json", "thresholds.json",
-            "mel_recipe.txt", "mel_golden.npz", "NOTICE", "license_manifest.csv"]
+            "mel_recipe.txt", "mel_golden.npz", "NOTICE", "license_manifest.csv",
+            "run_manifest.json"]
 
 def verify_release(release_dir) -> tuple[bool, list[str]]:
     d = Path(release_dir)
