@@ -12,7 +12,11 @@ def test_permissive_classification():
     assert not is_permissive("Attribution-NonCommercial-ShareAlike 3.0")
     assert not is_permissive("All rights reserved")
     assert not is_permissive("")
+    assert not is_permissive("   ")
     assert not is_permissive(None)
+    # real FMA rows have missing licenses as NaN (float) — must not crash / leak
+    assert not is_permissive(float("nan"))
+    assert not is_permissive(3.5)
 
 def test_filter_leaks_zero_nonpermissive():
     df = pd.DataFrame({
