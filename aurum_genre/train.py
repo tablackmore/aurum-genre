@@ -7,6 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from .dataset import GenreChunkDataset, class_pos_weights
 from .model import ShortChunkCNN
+from .seed import seed_everything, worker_init_fn
 from .taxonomy import load_taxonomy, root_labels
 
 # train.py lives at aurum_genre/train.py → parent.parent is the repo root
@@ -58,12 +59,16 @@ def fit(manifest: str, epochs: int, out_ckpt: str,
         taxonomy_path: str | Path | None = None, val_manifest: str | None = None,
         cache_dir: str | None = None, chunks_per_track: int = 4, augment: bool = True,
         mixup_alpha: float = 0.2, weight_decay: float = 1e-4,
-        use_pos_weight: bool = True, patience: int = 8) -> None:
+        use_pos_weight: bool = True, patience: int = 8,
+        seed: int = 1337, num_workers: int = 4) -> None:
     device = device or default_device()
+    seed_everything(seed)
     roots = root_labels(load_taxonomy(taxonomy_path or _DEFAULT_TAXONOMY))
     ds = GenreChunkDataset(manifest, roots, cache_dir=cache_dir,
                            chunks_per_track=chunks_per_track, augment=augment)
-    loader = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
+    loader = DataLoader(ds, batch_size=batch_size, shuffle=True,
+                        num_workers=num_workers, drop_last=True,
+                        worker_init_fn=worker_init_fn)
     model = ShortChunkCNN(num_classes=len(roots)).to(device)
     crit = nn.BCEWithLogitsLoss(
         pos_weight=class_pos_weights(manifest, roots).to(device)
@@ -89,7 +94,12 @@ def fit(manifest: str, epochs: int, out_ckpt: str,
             break
     if best_state is not None:  # restore best-on-validation weights
         model.load_state_dict(best_state)
-    torch.save({"state_dict": model.state_dict(), "roots": roots}, out_ckpt)
+    config = {"seed": seed, "epochs": epochs, "batch_size": batch_size, "lr": lr,
+              "weight_decay": weight_decay, "chunks_per_track": chunks_per_track,
+              "augment": augment, "mixup_alpha": mixup_alpha,
+              "use_pos_weight": use_pos_weight, "patience": patience,
+              "best_val_auc": (best_auc if best_state is not None else None)}
+    torch.save({"state_dict": model.state_dict(), "roots": roots, "config": config}, out_ckpt)
     tag = f" (best val_auc={best_auc:.4f})" if best_state is not None else ""
     print(f"wrote {out_ckpt}{tag}")
 
