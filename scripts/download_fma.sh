@@ -36,8 +36,10 @@ dl_verify_unzip() {
     echo "(delete the file and re-run to re-download)" >&2
     exit 1
   fi
-  echo "· unzipping $(basename "$zip") ..."
-  unzip -q "$zip" -d "$DEST"
+  # FMA zips use bzip2 compression (method 12); macOS Info-ZIP `unzip` can't
+  # handle it (exit 81). Python's zipfile does, and it's portable (macOS/Linux/Colab).
+  echo "· extracting $(basename "$zip") (python zipfile — FMA uses bzip2) ..."
+  python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$zip" "$DEST"
 }
 
 dl_verify_unzip "$BASE/fma_metadata.zip" "$DEST/fma_metadata.zip" "$META_SHA1" "$DEST/fma_metadata"
