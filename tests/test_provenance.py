@@ -1,7 +1,8 @@
 import hashlib
 import json
 from aurum_genre.provenance import (sha256_file, manifest_track_hash,
-                                     build_run_manifest, write_run_manifest)
+                                     build_run_manifest, write_run_manifest,
+                                     git_info)
 
 def test_sha256_file_matches_hashlib(tmp_path):
     p = tmp_path / "x.bin"; p.write_bytes(b"aurum")
@@ -13,6 +14,13 @@ def test_manifest_track_hash_is_order_independent(tmp_path):
     pd.DataFrame({"filepath": ["z.mp3", "a.mp3"], "root_labels": ["x", "y"]}).to_csv(a, index=False)
     pd.DataFrame({"filepath": ["a.mp3", "z.mp3"], "root_labels": ["y", "x"]}).to_csv(b, index=False)
     assert manifest_track_hash(a) == manifest_track_hash(b)
+
+def test_git_info_non_git_dir_returns_unknown(tmp_path):
+    """git_info on a plain directory (not a git repo) must return unknown state."""
+    info = git_info(tmp_path)
+    assert info["commit"] == "unknown", f"expected 'unknown', got {info['commit']!r}"
+    assert info["code_state"] == "unknown", f"expected 'unknown', got {info['code_state']!r}"
+
 
 def test_build_and_write_manifest_has_required_keys(tmp_path):
     m = build_run_manifest(repo_dir=tmp_path, seed=1337, hyperparameters={"epochs": 1},

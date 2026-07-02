@@ -22,11 +22,19 @@ def manifest_track_hash(manifest_csv) -> str:
 
 def git_info(repo_dir) -> dict:
     def run(*args):
-        return subprocess.run(["git", "-C", str(repo_dir), *args],
-                              capture_output=True, text=True).stdout.strip()
-    dirty = bool(run("status", "--porcelain"))
-    return {"commit": run("rev-parse", "HEAD"),
-            "branch": run("rev-parse", "--abbrev-ref", "HEAD"),
+        result = subprocess.run(["git", "-C", str(repo_dir), *args],
+                                capture_output=True, text=True)
+        return result.returncode, result.stdout.strip()
+
+    rc, commit = run("rev-parse", "HEAD")
+    if rc != 0 or not commit:
+        return {"commit": "unknown", "branch": "unknown",
+                "dirty": False, "code_state": "unknown"}
+
+    _, branch = run("rev-parse", "--abbrev-ref", "HEAD")
+    _, status = run("status", "--porcelain")
+    dirty = bool(status)
+    return {"commit": commit, "branch": branch,
             "dirty": dirty, "code_state": "dirty" if dirty else "clean"}
 
 def env_info(device) -> dict:
