@@ -1,0 +1,29 @@
+{
+  "_note": "DRAFT — maps MTG-Jamendo genre tags to the aurum taxonomy. The electronic-family mappings are the important ones for genre-v2; the broader root mappings are heuristic and worth a human review before a production run.",
+  "root_map": {
+    "electronic": "electronic", "techno": "electronic", "house": "electronic",
+    "trance": "electronic", "ambient": "electronic", "dubstep": "electronic",
+    "downtempo": "electronic", "idm": "electronic", "drumnbass": "electronic",
+    "dnb": "electronic", "minimal": "electronic", "triphop": "electronic",
+    "chillout": "electronic", "dance": "electronic", "electro": "electronic",
+    "breakbeat": "electronic", "club": "electronic", "lounge": "electronic",
+    "rock": "rock", "metal": "rock", "punkrock": "rock", "hardrock": "rock",
+    "grunge": "rock", "poprock": "rock", "alternative": "rock", "indie": "rock",
+    "progressive": "rock",
+    "hiphop": "hip-hop", "rap": "hip-hop",
+    "pop": "pop", "easylistening": "pop",
+    "jazz": "jazz",
+    "classical": "classical", "orchestral": "classical",
+    "folk": "folk", "popfolk": "folk", "singersongwriter": "folk",
+    "soul": "soul-rnb", "funk": "soul-rnb", "rnb": "soul-rnb",
+    "blues": "blues",
+    "country": "country",
+    "world": "world", "latin": "world", "reggae": "world", "african": "world"
+  },
+  "sub_map": {
+    "techno": "techno", "house": "house", "trance": "trance", "ambient": "ambient",
+    "dubstep": "dubstep", "downtempo": "downtempo", "idm": "idm",
+    "drumnbass": "drum-n-bass", "dnb": "drum-n-bass", "minimal": "minimal",
+    "triphop": "trip-hop", "chillout": "downtempo", "dance": "dance"
+  }
+}
