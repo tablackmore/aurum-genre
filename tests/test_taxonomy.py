@@ -1,4 +1,5 @@
-from aurum_genre.taxonomy import load_taxonomy, root_labels, map_fma_root
+from aurum_genre.taxonomy import (load_taxonomy, root_labels, map_fma_root,
+                                  output_labels, map_fma_subgenres)
 
 def test_root_labels_are_ordered_and_unique():
     tax = load_taxonomy("taxonomy.json")
@@ -17,3 +18,21 @@ def test_every_fma_root_maps_or_is_explicitly_dropped():
         _ = map_fma_root(g, tax)  # totality: mapping is defined for all inputs
     assert map_fma_root("Spoken", tax) is None       # dropped
     assert map_fma_root("Electronic", tax) is not None
+
+def test_output_labels_are_roots_then_namespaced_subgenres():
+    tax = load_taxonomy("taxonomy.json")
+    labels = output_labels(tax)
+    roots = root_labels(tax)
+    assert labels[:len(roots)] == roots               # roots first, in order
+    subs = labels[len(roots):]
+    assert all(":" in s for s in subs)                # all namespaced <root>:<sub>
+    assert "electronic:techno" in subs and "rock:metal" in subs and "classical:orchestral" in subs
+    assert labels == list(dict.fromkeys(labels))      # unique
+
+def test_map_fma_subgenres_namespaces_under_correct_root():
+    tax = load_taxonomy("taxonomy.json")
+    # Titles across roots map to the right namespace; Death-Metal folds into metal.
+    got = map_fma_subgenres(["Techno", "Metal", "Death-Metal", "Choral Music"], tax)
+    assert set(got) == {"electronic:techno", "rock:metal", "classical:choral"}
+    # The generic "Electronic" title is not a subgenre; unknown titles are dropped.
+    assert map_fma_subgenres(["Electronic", "Nonsense Genre"], tax) == []

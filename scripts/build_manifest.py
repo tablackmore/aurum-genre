@@ -10,10 +10,31 @@ Reads fma tracks.csv (multi-index header), optionally restricts to an FMA
 top genre to a root label, and writes the manifest + NOTICE + license_manifest."""
 from __future__ import annotations
 import argparse
+import ast
 from pathlib import Path
 import pandas as pd
 from aurum_genre.licenses import filter_permissive, build_notice
-from aurum_genre.taxonomy import load_taxonomy, map_fma_root
+from aurum_genre.taxonomy import load_taxonomy, map_fma_root, map_fma_subgenres
+
+
+def _load_genre_id_titles(fma_meta: str | Path) -> dict[int, str]:
+    """FMA genre_id → title from genres.csv, if present (else empty → no subgenres)."""
+    p = Path(fma_meta) / "genres.csv"
+    if not p.exists():
+        return {}
+    g = pd.read_csv(p)
+    return dict(zip(g["genre_id"].astype(int), g["title"].astype(str)))
+
+
+def _fine_titles(raw, id2title: dict[int, str]) -> list[str]:
+    """Parse a track.genres cell ('[15, 25]') to fine-genre titles."""
+    if not id2title or pd.isna(raw):
+        return []
+    try:
+        ids = ast.literal_eval(raw) if isinstance(raw, str) else list(raw)
+    except (ValueError, SyntaxError):
+        return []
+    return [id2title[i] for i in ids if i in id2title]
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -28,10 +49,13 @@ def build(fma_meta: str | Path, fma_audio: str | Path,
           subset: str | None = None, split: str | None = None) -> None:
     """Core manifest-build logic; importable for testing."""
     tracks = pd.read_csv(Path(fma_meta) / "tracks.csv", index_col=0, header=[0, 1])
+    # Fine-genre IDs (for subgenre labels) are optional — absent in minimal fixtures.
+    has_genres = ("track", "genres") in tracks.columns
     df = pd.DataFrame({
         "track_id": tracks.index,
         "license": tracks[("track", "license")].values,
         "genre_top": tracks[("track", "genre_top")].values,
+        "genres": tracks[("track", "genres")].values if has_genres else "",
         "artist_name": tracks[("artist", "name")].values,
         "track_title": tracks[("track", "title")].values,
         "subset": tracks[("set", "subset")].values,
@@ -53,7 +77,21 @@ def build(fma_meta: str | Path, fma_audio: str | Path,
         s = f"{int(tid):06d}"
         return str(Path(fma_audio) / s[:3] / f"{s}.mp3")
     df["filepath"] = df["track_id"].apply(fp)
-    df["root_labels"] = df["root"]
+
+    # Multi-label output: root plus (for electronic tracks) namespaced subgenres
+    # derived from the track's fine FMA genres. Degrades to root-only when the
+    # genres column / genres.csv are absent.
+    id2title = _load_genre_id_titles(fma_meta)
+
+    subbed_roots = set(tax.get("sub", {}))
+
+    def labels_for(row) -> str:
+        labels = [row["root"]]
+        if row["root"] in subbed_roots:
+            subs = map_fma_subgenres(_fine_titles(row["genres"], id2title), tax)
+            labels += [s for s in subs if s.split(":", 1)[0] == row["root"]]
+        return "|".join(labels)
+    df["root_labels"] = df.apply(labels_for, axis=1)
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     df[["filepath", "root_labels"]].to_csv(out, index=False)
