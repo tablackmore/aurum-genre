@@ -7,8 +7,10 @@ all-rights-reserved, unknown/empty.
 from __future__ import annotations
 import pandas as pd
 
-_DISQUALIFY = ("noncommercial", "non-commercial", "noderiv", "no-deriv",
-               "sharealike", "share-alike", "-nc", "-nd", "-sa")
+_DISQUALIFY = ("noncommercial", "non-commercial", "non commercial",
+               "noderiv", "no-deriv", "no deriv", "no derivative",
+               "sharealike", "share-alike", "share alike",
+               "-nc", "-nd", "-sa")
 _PERMIT = ("cc by", "cc-by", "attribution", "cc0", "public domain", "publicdomain")
 
 def is_permissive(license_str) -> bool:

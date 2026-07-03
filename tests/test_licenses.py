@@ -10,6 +10,11 @@ def test_permissive_classification():
     assert not is_permissive("Attribution-NonCommercial 4.0")
     assert not is_permissive("Attribution-NoDerivatives 4.0")
     assert not is_permissive("Attribution-NonCommercial-ShareAlike 3.0")
+    # Real FMA license strings use SPACES — the filter must still reject these:
+    assert not is_permissive("Attribution-Share Alike 3.0 United States")
+    assert not is_permissive("Attribution-Share Alike 2.0 France")
+    assert not is_permissive("Attribution-No Derivative Works 3.0 United States")
+    assert not is_permissive("Attribution-No Derivative Works 2.5 Italy")
     assert not is_permissive("All rights reserved")
     assert not is_permissive("")
     assert not is_permissive("   ")
