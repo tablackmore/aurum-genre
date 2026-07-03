@@ -21,7 +21,9 @@
   "dropped": ["Experimental", "Spoken", "Old-Time / Historic"],
   "sub": {
     "electronic": ["ambient", "chiptune", "dance", "downtempo", "drum-n-bass",
-                   "dubstep", "house", "idm", "minimal", "techno", "trance", "trip-hop"]
+                   "dubstep", "house", "idm", "minimal", "techno", "trance", "trip-hop"],
+    "rock": ["alternative", "garage", "grunge", "indie", "metal", "progressive", "punk"],
+    "classical": ["chamber", "choral", "contemporary", "orchestral"]
   },
   "fma_sub_map": {
     "Chip Music": "chiptune",
@@ -37,6 +39,18 @@
     "Dubstep": "dubstep",
     "Dance": "dance",
     "Drum & Bass": "drum-n-bass",
-    "Trance": "trance"
+    "Trance": "trance",
+    "Metal": "metal",
+    "Death-Metal": "metal",
+    "Punk": "punk",
+    "Post-Punk": "punk",
+    "Hardcore": "punk",
+    "Indie-Rock": "indie",
+    "Garage": "garage",
+    "Progressive": "progressive",
+    "Post-Rock": "progressive",
+    "Choral Music": "choral",
+    "Contemporary Classical": "contemporary",
+    "Chamber Music": "chamber"
   }
 }

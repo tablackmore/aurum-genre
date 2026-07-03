@@ -25,14 +25,14 @@ def test_output_labels_are_roots_then_namespaced_subgenres():
     roots = root_labels(tax)
     assert labels[:len(roots)] == roots               # roots first, in order
     subs = labels[len(roots):]
-    assert all(s.startswith("electronic:") for s in subs)
-    assert "electronic:techno" in subs and "electronic:chiptune" in subs
+    assert all(":" in s for s in subs)                # all namespaced <root>:<sub>
+    assert "electronic:techno" in subs and "rock:metal" in subs and "classical:orchestral" in subs
     assert labels == list(dict.fromkeys(labels))      # unique
 
-def test_map_fma_subgenres_maps_known_titles_and_drops_unknown():
+def test_map_fma_subgenres_namespaces_under_correct_root():
     tax = load_taxonomy("taxonomy.json")
-    # A track tagged Techno + Chip Music → two namespaced subgenre labels.
-    got = map_fma_subgenres(["Techno", "Chip Music"], tax)
-    assert set(got) == {"electronic:techno", "electronic:chiptune"}
+    # Titles across roots map to the right namespace; Death-Metal folds into metal.
+    got = map_fma_subgenres(["Techno", "Metal", "Death-Metal", "Choral Music"], tax)
+    assert set(got) == {"electronic:techno", "rock:metal", "classical:choral"}
     # The generic "Electronic" title is not a subgenre; unknown titles are dropped.
     assert map_fma_subgenres(["Electronic", "Nonsense Genre"], tax) == []

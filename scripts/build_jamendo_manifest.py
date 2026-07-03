@@ -54,7 +54,7 @@ def parse_genres(autotagging_genre_tsv: str | Path) -> dict[str, list[str]]:
 
 
 def labels_for_tags(tags: list[str], gmap: dict) -> list[str]:
-    """Jamendo genre tags -> ordered, deduped [roots..., electronic:<sub>...]."""
+    """Jamendo genre tags -> ordered, deduped [roots..., <root>:<sub>...]."""
     root_map, sub_map = gmap["root_map"], gmap["sub_map"]
     labels: list[str] = []
     for t in tags:
@@ -63,10 +63,11 @@ def labels_for_tags(tags: list[str], gmap: dict) -> list[str]:
             labels.append(r)
     for t in tags:
         s = sub_map.get(t)
-        if s:
-            lab = f"electronic:{s}"
-            if "electronic" not in labels:
-                labels.append("electronic")
+        root = root_map.get(t)
+        if s and root:                       # namespace the subgenre under its own root
+            if root not in labels:
+                labels.append(root)
+            lab = f"{root}:{s}"
             if lab not in labels:
                 labels.append(lab)
     return labels

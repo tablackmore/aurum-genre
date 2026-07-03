@@ -83,10 +83,13 @@ def build(fma_meta: str | Path, fma_audio: str | Path,
     # genres column / genres.csv are absent.
     id2title = _load_genre_id_titles(fma_meta)
 
+    subbed_roots = set(tax.get("sub", {}))
+
     def labels_for(row) -> str:
         labels = [row["root"]]
-        if row["root"] == "electronic":
-            labels += map_fma_subgenres(_fine_titles(row["genres"], id2title), tax)
+        if row["root"] in subbed_roots:
+            subs = map_fma_subgenres(_fine_titles(row["genres"], id2title), tax)
+            labels += [s for s in subs if s.split(":", 1)[0] == row["root"]]
         return "|".join(labels)
     df["root_labels"] = df.apply(labels_for, axis=1)
 

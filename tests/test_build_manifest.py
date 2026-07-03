@@ -128,6 +128,24 @@ def test_electronic_track_gets_namespaced_subgenre_labels(tmp_path):
     assert "electronic" in labels                      # track 3: electronic, no known sub
 
 
+def test_rock_track_gets_rock_subgenre_label(tmp_path):
+    """Subgenres generalise beyond electronic: a Metal fine-genre → rock:metal."""
+    fma_meta = tmp_path / "fma_metadata"
+    fma_meta.mkdir()
+    (fma_meta / "tracks.csv").write_text(textwrap.dedent("""\
+        ,track,track,track,track,artist,set,set
+        track_id,genre_top,genres,license,title,name,subset,split
+        1,Rock,[45],Creative Commons Attribution,Song A,Artist A,small,training
+    """))
+    (fma_meta / "genres.csv").write_text(
+        "genre_id,#tracks,parent,title,top_level\n45,50,12,Metal,12\n")
+    fma_audio = tmp_path / "fma_audio"
+    fma_audio.mkdir()
+    from scripts.build_manifest import build
+    build(fma_meta, fma_audio, tmp_path / "m.csv", tmp_path / "NOTICE", split="training")
+    assert "rock|rock:metal" in set(pd.read_csv(tmp_path / "m.csv")["root_labels"])
+
+
 def test_license_manifest_not_written_when_arg_is_none(tmp_path):
     """When license_manifest=None, no file should be created."""
     fma_meta = tmp_path / "fma_metadata"

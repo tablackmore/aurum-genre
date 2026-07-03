@@ -24,6 +24,9 @@
     "techno": "techno", "house": "house", "trance": "trance", "ambient": "ambient",
     "dubstep": "dubstep", "downtempo": "downtempo", "idm": "idm",
     "drumnbass": "drum-n-bass", "dnb": "drum-n-bass", "minimal": "minimal",
-    "triphop": "trip-hop", "chillout": "downtempo", "dance": "dance"
+    "triphop": "trip-hop", "chillout": "downtempo", "dance": "dance",
+    "metal": "metal", "punkrock": "punk", "grunge": "grunge",
+    "alternative": "alternative", "indie": "indie", "progressive": "progressive",
+    "orchestral": "orchestral"
   }
 }

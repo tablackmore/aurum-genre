@@ -5,13 +5,15 @@ import pandas as pd
 from scripts.build_jamendo_manifest import build, labels_for_tags
 
 GMAP = {
-    "root_map": {"techno": "electronic", "electronic": "electronic", "rock": "rock"},
-    "sub_map": {"techno": "techno"},
+    "root_map": {"techno": "electronic", "electronic": "electronic",
+                 "rock": "rock", "metal": "rock"},
+    "sub_map": {"techno": "techno", "metal": "metal"},
 }
 
 
-def test_labels_for_tags_adds_electronic_root_for_subgenre():
+def test_labels_for_tags_namespaces_subgenre_under_its_root():
     assert labels_for_tags(["techno"], GMAP) == ["electronic", "electronic:techno"]
+    assert labels_for_tags(["metal"], GMAP) == ["rock", "rock:metal"]   # generalised
     assert labels_for_tags(["rock"], GMAP) == ["rock"]
     assert labels_for_tags(["unknown"], GMAP) == []
 
