@@ -1,7 +1,7 @@
 """Tests for the FMA+Jamendo combined manifest builder."""
 from __future__ import annotations
 import pandas as pd
-from scripts.build_combined_manifest import build_combined, split_jamendo
+from scripts.build_combined_manifest import build_combined, split_jamendo, stratified_split
 
 
 def _csv(tmp_path, name, n, label):
@@ -32,3 +32,18 @@ def test_build_combined_merges_fma_and_jamendo(tmp_path):
     ctr = pd.read_csv(tmp_path / "ctr.csv")
     assert (ctr["root_labels"] == "rock").sum() == 10          # all FMA train present
     assert (ctr["root_labels"] == "electronic|electronic:techno").sum() > 0
+
+
+def test_stratified_split_gives_rare_labels_val_examples():
+    import pandas as pd
+    # 200 common 'rock' tracks + 20 rare 'rock|rock:garage' tracks.
+    rows = [{"filepath": f"c{i}.mp3", "root_labels": "rock"} for i in range(200)]
+    rows += [{"filepath": f"g{i}.mp3", "root_labels": "rock|rock:garage"} for i in range(20)]
+    df = pd.DataFrame(rows)
+    train, val = stratified_split(df, seed=1337, val_frac=0.12, min_val=4)
+    assert len(train) + len(val) == 220                        # partition
+    val_garage = val["root_labels"].str.contains("rock:garage").sum()
+    assert val_garage >= 4                                      # rare label got val examples
+    # deterministic
+    t2, v2 = stratified_split(df, seed=1337, val_frac=0.12, min_val=4)
+    assert list(v2["filepath"]) == list(val["filepath"])
