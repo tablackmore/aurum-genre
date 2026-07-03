@@ -32,9 +32,14 @@ from scripts import package_release  # noqa: E402
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--subset", required=True, choices=["small", "medium", "large"])
+    ap.add_argument("--subset", choices=["small", "medium", "large"],
+                    help="FMA subset to build manifests from (omit when using --train-csv/--val-csv)")
     ap.add_argument("--fma-meta", default="data/fma_metadata")
     ap.add_argument("--fma-audio", default=None, help="default data/fma_<subset>")
+    ap.add_argument("--train-csv", default=None,
+                    help="pre-built training manifest; skips FMA manifest build (e.g. combined FMA+Jamendo)")
+    ap.add_argument("--val-csv", default=None, help="pre-built validation manifest")
+    ap.add_argument("--source", default=None, help="dataset source descriptor for the run manifest")
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--min-auc", type=float, default=0.80,
@@ -42,21 +47,31 @@ def main() -> None:
     a = ap.parse_args()
     seed_everything(a.seed)
     _t_start = _dt.datetime.now(_dt.timezone.utc).isoformat()
-    audio = a.fma_audio or f"data/fma_{a.subset}"
 
     data = ROOT / "data"
     rel = ROOT / "release"
     data.mkdir(exist_ok=True)
     rel.mkdir(exist_ok=True)
-    train_csv, val_csv = data / "train.csv", data / "val.csv"
     ckpt = data / "genre.pt"
 
-    print(f"[1/5] building manifests (subset={a.subset}) ...")
-    # NOTICE + license_manifest reflect the TRAINING data (the attribution obligation).
-    build_manifest(a.fma_meta, audio, train_csv, rel / "NOTICE",
-                   rel / "license_manifest.csv", subset=a.subset, split="training")
-    build_manifest(a.fma_meta, audio, val_csv, data / "_val_notice",
-                   None, subset=a.subset, split="validation")
+    if a.train_csv and a.val_csv:
+        # Pre-built manifests (e.g. combined FMA+Jamendo). NOTICE + license_manifest
+        # are expected to already be in release/ (written by the combined builder).
+        train_csv, val_csv = Path(a.train_csv), Path(a.val_csv)
+        print(f"[1/5] using pre-built manifests: {train_csv.name} / {val_csv.name}")
+        if not (rel / "NOTICE").exists():
+            (rel / "NOTICE").write_text("Attribution: see license_manifest.csv\n")
+    else:
+        if not a.subset:
+            raise SystemExit("provide either --subset or both --train-csv and --val-csv")
+        audio = a.fma_audio or f"data/fma_{a.subset}"
+        train_csv, val_csv = data / "train.csv", data / "val.csv"
+        print(f"[1/5] building manifests (subset={a.subset}) ...")
+        # NOTICE + license_manifest reflect the TRAINING data (the attribution obligation).
+        build_manifest(a.fma_meta, audio, train_csv, rel / "NOTICE",
+                       rel / "license_manifest.csv", subset=a.subset, split="training")
+        build_manifest(a.fma_meta, audio, val_csv, data / "_val_notice",
+                       None, subset=a.subset, split="validation")
 
     print(f"[2/5] training ({a.epochs} epochs) ...")
     # Pass the val split so training keeps the best-on-validation checkpoint and
@@ -79,7 +94,7 @@ def main() -> None:
     manifest = provenance.build_run_manifest(
         repo_dir=ROOT, seed=a.seed, hyperparameters={**cfg, "subset": a.subset},
         dataset={
-            "source": {"kind": "fma", "subset": a.subset},
+            "source": ({"kind": a.source} if a.source else {"kind": "fma", "subset": a.subset}),
             "train_rows": sum(1 for _ in open(train_csv)) - 1,
             "val_rows": sum(1 for _ in open(val_csv)) - 1,
             "train_manifest_sha256": provenance.sha256_file(train_csv),
