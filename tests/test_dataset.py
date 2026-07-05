@@ -94,3 +94,25 @@ def test_cache_writes_once_and_reuses(tmp_path):
     fp.unlink()
     mel2, _ = ds[0]
     assert mel2.shape == mel1.shape       # served from cache despite missing source
+
+
+def test_deterministic_dataset_returns_center_chunk_repeatably(tmp_path):
+    """deterministic=True must always yield the same (center) chunk, so val
+    metrics are comparable across epochs (model selection isn't chunk-lottery)."""
+    import torchaudio, pandas as pd
+    from aurum_genre.mel import log_mel, CHUNK_SAMPLES
+    sr = 16000
+    torch.manual_seed(0)
+    wav = (torch.rand(1, sr * 5) * 2 - 1) * 0.5        # noise → chunks differ
+    fp = tmp_path / "t.wav"
+    torchaudio.save(str(fp), wav, sr)
+    man = tmp_path / "m.csv"
+    pd.DataFrame({"filepath": [str(fp)], "root_labels": ["rock"]}).to_csv(man, index=False)
+    ds = GenreChunkDataset(str(man), ROOTS, deterministic=True)
+    m1, _ = ds[0]
+    m2, _ = ds[0]
+    assert torch.equal(m1, m2)                          # repeatable
+    decoded, _ = torchaudio.load(str(fp))               # 16-bit quantised copy
+    start = (decoded.shape[1] - CHUNK_SAMPLES) // 2
+    expected = log_mel(decoded[:, start:start + CHUNK_SAMPLES])
+    assert torch.equal(m1, expected)                    # and it is the center chunk

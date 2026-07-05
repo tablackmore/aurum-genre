@@ -47,3 +47,19 @@ def test_stratified_split_gives_rare_labels_val_examples():
     # deterministic
     t2, v2 = stratified_split(df, seed=1337, val_frac=0.12, min_val=4)
     assert list(v2["filepath"]) == list(val["filepath"])
+
+
+def test_stratified_split_never_strips_a_label_from_train():
+    """Every label must keep >=1 training example: a singleton label sent
+    entirely to val can never be learned (and its val AUC is undefined)."""
+    rows = [{"filepath": f"c{i}.mp3", "root_labels": "rock"} for i in range(200)]
+    rows.append({"filepath": "solo.mp3", "root_labels": "jazz"})       # 1 track
+    rows += [{"filepath": f"b{i}.mp3", "root_labels": "blues"} for i in range(2)]
+    df = pd.DataFrame(rows)
+    for seed in (1, 7, 1337):
+        train, val = stratified_split(df, seed=seed, val_frac=0.12, min_val=4)
+        assert len(train) + len(val) == len(rows)                      # partition
+        train_labels = set()
+        for labs in train["root_labels"]:
+            train_labels.update(str(labs).split("|"))
+        assert {"rock", "jazz", "blues"} <= train_labels               # none orphaned

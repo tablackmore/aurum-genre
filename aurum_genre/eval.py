@@ -1,4 +1,10 @@
-"""Held-out metrics (macro ROC-AUC) + per-class F1-maximising thresholds."""
+"""Held-out metrics (macro ROC-AUC) + per-class F1-maximising thresholds.
+
+All track-level scoring is chunk-averaged via track_scores(), the same
+behaviour as production inference (infer.tag_track) — thresholds calibrated
+here are applied to chunk-averaged probabilities in the app, so they must be
+tuned on chunk-averaged probabilities too.
+"""
 from __future__ import annotations
 import json
 import numpy as np
@@ -25,32 +31,11 @@ def calibrate_thresholds(y_true, y_score, roots) -> dict[str, float]:
         out[name] = best_t
     return out
 
-def evaluate(ckpt: str, manifest: str, out_thresholds: str) -> dict:
-    import torch
-    from torch.utils.data import DataLoader
-    from .dataset import GenreChunkDataset
-    from .model import ShortChunkCNN
-    from .train import default_device
-    blob = torch.load(ckpt, map_location="cpu", weights_only=True)  # safe unpickle
-    roots = blob["roots"]
-    device = default_device()
-    model = ShortChunkCNN(num_classes=len(roots))
-    model.load_state_dict(blob["state_dict"]); model.eval(); model.to(device)
-    ds = GenreChunkDataset(manifest, roots)
-    loader = DataLoader(ds, batch_size=32)
-    ys, ss = [], []
-    with torch.no_grad():
-        for mel, target in loader:
-            probs = torch.sigmoid(model(mel.to(device))).cpu()
-            ss.append(probs.numpy()); ys.append(target.numpy())
-    y_true, y_score = np.concatenate(ys), np.concatenate(ss)
-    thresholds = calibrate_thresholds(y_true, y_score, roots)
-    with open(out_thresholds, "w") as f:
-        json.dump(thresholds, f, indent=2)
-    return {"macro_auc": macro_auc(y_true, y_score), "thresholds": thresholds}
-
-def chunk_averaged_metrics(ckpt: str, manifest: str, device: str | None = None) -> dict:
-    """Track-level metrics matching infer.py: average sigmoid over all chunks."""
+def track_scores(ckpt: str, manifest: str, device: str | None = None):
+    """Chunk-averaged sigmoid scores per track, matching infer.py exactly:
+    non-overlapping CHUNK_SAMPLES windows (tail dropped), mean over chunks.
+    Returns (y_true, y_score, roots, skipped) — skipped counts undecodable
+    tracks so a mass decode failure can't silently inflate metrics."""
     import torch
     import pandas as pd
     from .model import ShortChunkCNN
@@ -58,17 +43,18 @@ def chunk_averaged_metrics(ckpt: str, manifest: str, device: str | None = None) 
     from .mel import log_mel, CHUNK_SAMPLES
     from .train import default_device
     dev = device or default_device()
-    blob = torch.load(ckpt, map_location="cpu", weights_only=True)
+    blob = torch.load(ckpt, map_location="cpu", weights_only=True)  # safe unpickle
     roots = blob["roots"]
     model = ShortChunkCNN(num_classes=len(roots))
     model.load_state_dict(blob["state_dict"]); model.eval(); model.to(dev)
     df = pd.read_csv(manifest)
-    ys, ss = [], []
+    ys, ss, skipped = [], [], 0
     with torch.no_grad():
         for _, row in df.iterrows():
             try:
                 wav = _load_mono_16k(row["filepath"], None)
             except Exception:
+                skipped += 1
                 continue
             n = wav.shape[-1]
             if n < CHUNK_SAMPLES:
@@ -82,13 +68,33 @@ def chunk_averaged_metrics(ckpt: str, manifest: str, device: str | None = None) 
             raw = row["root_labels"]
             labs = [] if pd.isna(raw) else str(raw).split("|")
             ys.append(multihot(labs, roots).numpy())
-    y, s = np.array(ys), np.array(ss)
-    per_class, aucs = {}, []
+    return np.array(ys), np.array(ss), roots, skipped
+
+def _per_class(y: np.ndarray, s: np.ndarray, roots) -> dict:
+    per_class = {}
     for c, name in enumerate(roots):
         sup = int(y[:, c].sum())
         if len(np.unique(y[:, c])) < 2:
             per_class[name] = {"auc": None, "support": sup}
         else:
-            a = float(roc_auc_score(y[:, c], s[:, c])); aucs.append(a)
-            per_class[name] = {"auc": a, "support": sup}
-    return {"macro_auc": float(np.mean(aucs)) if aucs else 0.0, "per_class": per_class}
+            per_class[name] = {"auc": float(roc_auc_score(y[:, c], s[:, c])),
+                               "support": sup}
+    return per_class
+
+def evaluate(ckpt: str, manifest: str, out_thresholds: str,
+             device: str | None = None) -> dict:
+    """Chunk-averaged validation metrics + thresholds calibrated on those same
+    chunk-averaged scores (the distribution production inference thresholds)."""
+    y_true, y_score, roots, skipped = track_scores(ckpt, manifest, device)
+    thresholds = calibrate_thresholds(y_true, y_score, roots)
+    with open(out_thresholds, "w") as f:
+        json.dump(thresholds, f, indent=2)
+    return {"macro_auc": macro_auc(y_true, y_score),
+            "per_class": _per_class(y_true, y_score, roots),
+            "thresholds": thresholds, "skipped": skipped}
+
+def chunk_averaged_metrics(ckpt: str, manifest: str, device: str | None = None) -> dict:
+    """Track-level metrics matching infer.py: average sigmoid over all chunks."""
+    y, s, roots, skipped = track_scores(ckpt, manifest, device)
+    return {"macro_auc": macro_auc(y, s), "per_class": _per_class(y, s, roots),
+            "skipped": skipped}
