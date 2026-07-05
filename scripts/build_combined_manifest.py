@@ -20,31 +20,43 @@ def stratified_split(df: pd.DataFrame, seed: int = 1337,
     Assign rarest labels first: each label gets ~val_frac of its tracks in val,
     but at least min_val when it has enough tracks. Tracks are multi-label, so a
     val track counts for all its labels (overlap keeps the val set small).
+    Every label always keeps >=1 training example: a label sent entirely to val
+    (e.g. a singleton) could never be learned, and its val AUC is undefined.
     NOTE: this is a track-level split — for very small subgenres drawn from few
     artists it can leak an artist across train/val, mildly inflating their AUC.
     """
     rows = df.to_dict("records")
     random.Random(seed).shuffle(rows)
     label_rows: dict[str, list[int]] = defaultdict(list)
-    for i, r in enumerate(rows):
-        for lab in str(r["root_labels"]).split("|"):
+    row_labels = [str(r["root_labels"]).split("|") for r in rows]
+    for i, labs in enumerate(row_labels):
+        for lab in labs:
             label_rows[lab].append(i)
     val: set[int] = set()
+
+    def leaves_train_example(i: int) -> bool:
+        """True unless moving row i to val would strip some label's last
+        training example (guards multi-label rows in both loops below)."""
+        return all(any(j not in val and j != i for j in label_rows[lab])
+                   for lab in row_labels[i])
+
     for lab in sorted(label_rows, key=lambda l: len(label_rows[l])):
         cnt = len(label_rows[lab])
         want = max(min_val if cnt >= 2 * min_val else max(1, cnt // 3),
                    round(val_frac * cnt))
+        want = min(want, cnt - 1)          # never take a label's last example
         have = sum(1 for i in label_rows[lab] if i in val)
         for i in label_rows[lab]:
             if have >= want:
                 break
-            if i not in val:
+            if i not in val and leaves_train_example(i):
                 val.add(i); have += 1
     target = int(val_frac * len(rows))
     for i in range(len(rows)):
         if len(val) >= target:
             break
-        val.add(i)
+        if i not in val and leaves_train_example(i):
+            val.add(i)
     train = pd.DataFrame([rows[i] for i in range(len(rows)) if i not in val])
     valr = pd.DataFrame([rows[i] for i in sorted(val)])
     return train, valr

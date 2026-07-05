@@ -43,7 +43,11 @@ def train_one_epoch(model, loader, optim, device, crit=None, mixup_alpha: float 
 
 def _val_macro_auc(model, val_manifest, roots, device, cache_dir=None) -> float:
     from .eval import macro_auc
-    ds = GenreChunkDataset(val_manifest, roots, cache_dir=cache_dir)
+    # deterministic=True: score the same (center) chunk of every track each
+    # epoch, so early stopping / best-checkpoint selection compares like with
+    # like instead of riding random-chunk noise.
+    ds = GenreChunkDataset(val_manifest, roots, cache_dir=cache_dir,
+                           deterministic=True)
     loader = DataLoader(ds, batch_size=64)
     model.eval()
     ys, ss = [], []

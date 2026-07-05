@@ -44,3 +44,23 @@ def test_fit_records_config_and_seed(tmp_path):
     assert set(cfg) >= {"seed", "epochs", "batch_size", "lr", "weight_decay",
                         "chunks_per_track", "augment", "mixup_alpha",
                         "use_pos_weight", "patience", "best_val_auc"}
+
+def test_val_macro_auc_is_deterministic_across_calls(tmp_path):
+    """Early stopping / best-checkpoint selection must compare epochs on the
+    same audio slices — repeated scoring of one model must give one number."""
+    import torchaudio, pandas as pd
+    from aurum_genre.train import _val_macro_auc
+    sr = 16000
+    roots = ["electronic", "rock"]
+    rows = []
+    torch.manual_seed(0)
+    for i in range(10):
+        wav = (torch.rand(1, sr * 5) * 2 - 1) * 0.5    # noise → chunks differ
+        fp = tmp_path / f"t{i}.wav"; torchaudio.save(str(fp), wav, sr)
+        rows.append({"filepath": str(fp),
+                     "root_labels": "electronic" if i % 2 == 0 else "rock"})
+    man = tmp_path / "m.csv"; pd.DataFrame(rows).to_csv(man, index=False)
+    model = ShortChunkCNN(num_classes=2)
+    a = _val_macro_auc(model, str(man), roots, "cpu")
+    b = _val_macro_auc(model, str(man), roots, "cpu")
+    assert a == b

@@ -3,7 +3,9 @@
 Every `release/` ships `run_manifest.json` — the source of truth for how that
 `genre.onnx` was produced: git commit + dirty flag, seed, hyperparameters,
 dataset hashes (manifest SHA256 + track-list hash), environment (python/torch/
-torchaudio/OS/device), and metrics (single-chunk and chunk-averaged per-class AUC).
+torchaudio/OS/device), and metrics (chunk-averaged macro + per-class AUC —
+the same chunk-averaged scoring production inference uses, which is also what
+the shipped thresholds are calibrated on).
 
 ## Rebuild from scratch
 

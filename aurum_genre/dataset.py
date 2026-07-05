@@ -55,6 +55,13 @@ def _random_chunk(wav: torch.Tensor) -> torch.Tensor:
     start = random.randint(0, n - CHUNK_SAMPLES)
     return wav[:, start:start + CHUNK_SAMPLES]
 
+def _center_chunk(wav: torch.Tensor) -> torch.Tensor:
+    n = wav.shape[1]
+    if n < CHUNK_SAMPLES:
+        return torch.nn.functional.pad(wav, (0, CHUNK_SAMPLES - n))
+    start = (n - CHUNK_SAMPLES) // 2
+    return wav[:, start:start + CHUNK_SAMPLES]
+
 def class_pos_weights(manifest_csv: str, roots: list[str],
                       max_weight: float = 10.0) -> torch.Tensor:
     """Per-class BCE pos_weight = (#neg / #pos), clamped so ultra-rare classes
@@ -76,10 +83,15 @@ def class_pos_weights(manifest_csv: str, roots: list[str],
 
 class GenreChunkDataset(Dataset):
     def __init__(self, manifest_csv: str, roots: list[str], cache_dir: str | None = None,
-                 chunks_per_track: int = 1, augment: bool = False):
+                 chunks_per_track: int = 1, augment: bool = False,
+                 deterministic: bool = False):
         self.df = pd.read_csv(manifest_csv)
         self.roots = roots
         self.chunks_per_track = max(1, int(chunks_per_track))
+        # deterministic: always the center chunk, so repeated passes over the
+        # same manifest score the same audio (stable val metrics for early
+        # stopping / model selection). Training keeps random chunks.
+        self.deterministic = deterministic
         # Decoded-audio cache: explicit arg wins, else AURUM_CACHE_DIR, else disabled.
         cache_dir = cache_dir or os.environ.get("AURUM_CACHE_DIR") or None
         self.cache_dir = Path(cache_dir) if cache_dir else None
@@ -113,7 +125,7 @@ class GenreChunkDataset(Dataset):
             except Exception as e:  # decode errors vary by backend/file
                 last_err = e
                 continue
-            chunk = _random_chunk(wav)
+            chunk = _center_chunk(wav) if self.deterministic else _random_chunk(wav)
             mel = log_mel(chunk)
             if self._spec_aug is not None:
                 mel = self._spec_aug(mel)

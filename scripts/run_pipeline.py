@@ -78,9 +78,14 @@ def main() -> None:
     # can early-stop (see aurum_genre.train.fit). Cache dir from AURUM_CACHE_DIR.
     train.fit(str(train_csv), a.epochs, str(ckpt), val_manifest=str(val_csv), seed=a.seed)
 
-    print("[3/5] evaluating on the validation split ...")
+    print("[3/5] evaluating on the validation split (chunk-averaged, as served) ...")
+    # evaluate() scores chunk-averaged (matching infer.py) and calibrates the
+    # shipped thresholds on those same scores; its macro-AUC is the release
+    # verdict metric.
     metrics = geval.evaluate(str(ckpt), str(val_csv), str(rel / "thresholds.json"))
     auc = metrics["macro_auc"]
+    if metrics["skipped"]:
+        print(f"  WARNING: {metrics['skipped']} val tracks failed to decode and were skipped")
 
     print("[4/5] exporting genre.onnx + golden vectors ...")
     export.export_onnx(str(ckpt), str(rel / "genre.onnx"),
@@ -90,7 +95,6 @@ def main() -> None:
     print("[5/5] writing run manifest + packaging release/ ...")
     import torch as _torch
     cfg = _torch.load(str(ckpt), map_location="cpu", weights_only=True).get("config", {})
-    chunked = geval.chunk_averaged_metrics(str(ckpt), str(val_csv))
     manifest = provenance.build_run_manifest(
         repo_dir=ROOT, seed=a.seed, hyperparameters={**cfg, "subset": a.subset},
         dataset={
@@ -102,9 +106,10 @@ def main() -> None:
             "train_track_list_sha256": provenance.manifest_track_hash(train_csv),
         },
         device=train.default_device(),
-        metrics={"macro_auc_single_chunk": auc,
-                 "macro_auc_chunk_avg": chunked["macro_auc"],
-                 "per_class": chunked["per_class"]},
+        metrics={"macro_auc_chunk_avg": auc,
+                 "per_class": metrics["per_class"],
+                 "val_tracks_skipped": metrics["skipped"],
+                 "threshold_calibration": "chunk-averaged"},
         mel_recipe={"SR": SR, "N_FFT": N_FFT, "HOP": HOP, "N_MELS": N_MELS,
                     "CHUNK_SAMPLES": CHUNK_SAMPLES},
         timestamps={"start": _t_start,
@@ -117,7 +122,7 @@ def main() -> None:
 
     verdict = "PASS" if auc >= a.min_auc else "BELOW BAR — review before publishing"
     print("\n" + "=" * 60)
-    print(f"validation macro-AUC = {auc:.4f}   (advisory bar {a.min_auc:.2f}) → {verdict}")
+    print(f"validation macro-AUC (chunk-avg) = {auc:.4f}   (advisory bar {a.min_auc:.2f}) → {verdict}")
     print(f"release assets ready in: {rel}")
     print("Publish:  gh release create genre-v1 -R tablackmore/aurum-genre "
           f"{rel}/genre.onnx {rel}/taxonomy.json {rel}/thresholds.json "
