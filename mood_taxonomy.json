@@ -1,0 +1,7 @@
+{
+  "version": "mood-v1",
+  "level": "mood",
+  "roots": ["happy", "sad", "dark", "uplifting", "energetic",
+            "relaxing", "emotional", "meditative"],
+  "sub": {}
+}
